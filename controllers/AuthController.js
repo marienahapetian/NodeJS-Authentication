@@ -1,12 +1,14 @@
+require("dotenv").config();
+
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const SECRET = "clesecret";
-const users = [
-	{
-		username: "mari123",
-		passwordHash: "$2b$10$a8gEBjFploxTIT.pilWuCu06o.D5ausMXyhlQel9K9poWeltPV2/e",
-	},
-]; // [{ email, passwordHash }]
+const FileService = require("../services/FileService");
+const path = require("path");
+const SECRET = process.env.HASHING_SECRET;
+
+const usersFilePath = path.join(__dirname, "../public/users.json");
+const users = FileService.readJson(usersFilePath);
+
 class AuthController {
 	static login(req, res) {
 		const { username, password } = req.body;
@@ -28,10 +30,11 @@ class AuthController {
 		const { username, password } = req.body;
 
 		const userFound = users.find((user) => user.username == username);
-		if (userFound) return res.status(400).json({ message: "Utilisateur deja existant" });
+		if (userFound) return res.status(409).json({ message: "Utilisateur deja existant" });
 
 		bcrypt.hash(password, 10).then((hash) => {
 			users.push({ username: username, passwordHash: hash });
+			FileService.write(usersFilePath, JSON.stringify(users));
 
 			res.status(201).json({ passwordHash: hash });
 		});
