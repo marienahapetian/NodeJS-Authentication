@@ -1,13 +1,15 @@
 require("dotenv").config();
-
+const moment = require("moment");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const FileService = require("../services/FileService");
 const path = require("path");
 const SECRET = process.env.HASHING_SECRET;
+const maxAttemps = 3;
+const blockTime = 1;
 
 const usersFilePath = path.join(__dirname, "../public/users.json");
-const users = FileService.readJson(usersFilePath);
+let users = FileService.readJson(usersFilePath);
 
 class AuthController {
 	static login(req, res) {
@@ -17,8 +19,25 @@ class AuthController {
 		if (!userFound) return res.status(401).json({ message: "Identifiants invalides" });
 
 		bcrypt.compare(password, userFound.passwordHash).then((valid) => {
-			console.log(valid);
-			if (!valid) return res.status(401).json({ message: "Mot de passe incorrect", token: bcrypt.hash(password) });
+			if (!valid) {
+				if (userFound.loginAttempts == maxAttemps) {
+					let blocked = true;
+					if (!userFound.blocked) users = users.map((user) => (user.username === username ? { ...user, blocked: moment().format() } : user));
+					else {
+						if (moment().diff(userFound.blocked, "minutes") > blockTime) {
+							users = users.map((user) => (user.username === username ? { ...user, loginAttempts: 0, blocked: null } : user));
+							blocked = false;
+						}
+					}
+					FileService.write(usersFilePath, JSON.stringify(users));
+
+					if (blocked) return res.status(429).json({ message: "Too many login attempts" });
+				}
+
+				users = users.map((user) => (user.username === username ? { ...user, loginAttempts: user.loginAttempts + 1 } : user));
+				FileService.write(usersFilePath, JSON.stringify(users));
+				return res.status(401).json({ message: "Mot de passe incorrect" });
+			}
 
 			//generate a token
 			const token = jwt.sign({ username }, SECRET, { expiresIn: "1h" });
