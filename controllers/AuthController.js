@@ -1,4 +1,6 @@
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const SECRET = "clesecret";
 const users = [
 	{
 		username: "mari123",
@@ -16,7 +18,9 @@ class AuthController {
 			console.log(valid);
 			if (!valid) return res.status(401).json({ message: "Mot de passe incorrect", token: bcrypt.hash(password) });
 
-			res.status(200).json({ message: "Connected successfully" });
+			//generate a token
+			const token = jwt.sign({ username }, SECRET, { expiresIn: "1h" });
+			res.status(200).json({ token });
 		});
 	}
 
