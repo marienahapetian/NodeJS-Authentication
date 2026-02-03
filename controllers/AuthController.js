@@ -6,7 +6,7 @@ const FileService = require("../services/FileService");
 const path = require("path");
 const SECRET = process.env.HASHING_SECRET;
 const maxAttemps = 3;
-const blockTime = 1;
+const blockTime = 1; // in minutes
 
 const usersFilePath = path.join(__dirname, "../public/users.json");
 let users = FileService.readJson(usersFilePath);
@@ -41,6 +41,9 @@ class AuthController {
 
 			//generate a token
 			const token = jwt.sign({ username }, SECRET, { expiresIn: "1h" });
+			users = users.map((user) => (user.username == username ? { ...user, token: token } : user));
+			FileService.write(usersFilePath, JSON.stringify(users));
+
 			res.status(200).json({ token });
 		});
 	}
@@ -57,6 +60,12 @@ class AuthController {
 
 			res.status(201).json({ passwordHash: hash });
 		});
+	}
+
+	static authenticate(token) {
+		const userFound = users.find((user) => user.token == token);
+		if (!userFound) return false;
+		return true;
 	}
 }
 
