@@ -39,10 +39,9 @@ class AuthController {
 				return res.status(401).json({ message: "Mot de passe incorrect" });
 			}
 
+			const role = userFound.role;
 			//generate a token
-			const token = jwt.sign({ username }, SECRET, { expiresIn: "1h" });
-			users = users.map((user) => (user.username == username ? { ...user, token: token } : user));
-			FileService.write(usersFilePath, JSON.stringify(users));
+			const token = jwt.sign({ username, role }, SECRET, { expiresIn: "1h" });
 
 			res.status(200).json({ token });
 		});
@@ -63,9 +62,12 @@ class AuthController {
 	}
 
 	static authenticate(token) {
-		const userFound = users.find((user) => user.token == token);
-		if (!userFound) return false;
-		return true;
+		let authUser = null;
+		jwt.verify(token, SECRET, (err, user) => {
+			if (user) authUser = user;
+		});
+
+		return authUser;
 	}
 }
 

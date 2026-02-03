@@ -10,7 +10,10 @@ class AuthMiddleware {
 
 		const token = authHeader.split(" ")[1];
 
-		if (!AuthController.authenticate(token)) return res.status(403).json({ message: "Invalid or expired token" });
+		const authUser = AuthController.authenticate(token);
+		if (!authUser) return res.status(403).json({ message: "Invalid or expired token" });
+
+		req.user = authUser;
 
 		next();
 	}
